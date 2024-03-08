@@ -9,6 +9,8 @@ aws eks describe-cluster --name cluster-Name --region us-west-2 --query "cluster
 ```
 Make sure to replace "cluster-Name" with your cluster name.
 
+if you already have an IAM OIDC provider for your cluster and you can skip the next step
+
 2. Create an IAM OIDC identity provider for your cluster with the following command.
    
 ```
