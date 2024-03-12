@@ -380,7 +380,7 @@ create the deployment with 10 replicas.
 ```
 kubectl apply -f deployment.yaml
 ```
-3. verify that Karpenter is creating nodes for your workloads.
+verify that Karpenter is creating nodes for your workloads.
 
 ```
 kubectl logs -f -n kube-system -c controller -l app.kubernetes.io/name=karpenter
