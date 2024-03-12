@@ -4,7 +4,7 @@
 
 ```
 KARPENTER_NAMESPACE=kube-system
-CLUSTER_NAME=limbik-ml-cluster
+CLUSTER_NAME=limbik-ml-cluster  # replace with your cluster name
 
 AWS_PARTITION="aws" # if you are not using standard partitions, you may need to configure to aws-cn / aws-us-gov
 AWS_REGION="$(aws configure list | grep region | tr -s " " | cut -d" " -f3)"
@@ -204,3 +204,35 @@ aws iam put-role-policy --role-name "KarpenterControllerRole-${CLUSTER_NAME}" \
 ```
 
 ### Add tags to subnets and security groups
+
+We need to add tags to our nodegroup subnets so Karpenter will know which subnets to use.
+
+add the tag in the each subnet attached with the nodegroups
+```
+KEY=karpenter.sh/discovery
+Value=limbik-ml-cluster  # replace with your cluster name
+```
+### only tags the security groups for the Launch template of nodegroups
+
+```
+KEY=karpenter.sh/discovery
+Value=limbik-ml-cluster  # replace with your cluster name
+```
+
+### Update aws-auth ConfigMap 
+
+We need to allow nodes that are using the node IAM role we just created to join the cluster. To do that we have to modify the aws-auth ConfigMap in the cluster.
+
+```
+KUBE_EDITOR=nano kubectl edit configmap aws-auth -n kube-system
+```
+
+```
+    - groups:
+      - system:bootstrappers
+      - system:nodes
+      rolearn: arn:aws:iam::AWS_ACCOUNT_ID:role/KarpenterNodeRole-limbik-ml-cluster # change the Aws account ID 
+      username: system:node:{{EC2PrivateDNSName}}
+```
+use Ctrl+s to save and Ctrl+x to exit.
+
