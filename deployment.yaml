@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 10  # You can adjust the number of replicas
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "256Mi"  # Memory request
+            cpu: "100m"  # CPU request, 100 millicpu (0.1 CPU)
+          limits:
+            memory: "512Mi"  # Memory limit
+            cpu: "200m"  # CPU limit, 200 millicpu (0.2 CPU)
