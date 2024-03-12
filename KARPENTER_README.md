@@ -236,3 +236,107 @@ KUBE_EDITOR=nano kubectl edit configmap aws-auth -n kube-system
 ```
 use Ctrl+s to save and Ctrl+x to exit.
 
+### Deploy Karpenter 
+
+1. First set the Karpenter release you want to deploy.
+
+```
+export KARPENTER_VERSION="0.35.1"
+```
+2. Make sure you have installed helm in your machine.
+
+```
+helm template karpenter oci://public.ecr.aws/karpenter/karpenter --version "${KARPENTER_VERSION}" --namespace "${KARPENTER_NAMESPACE}" \
+    --set "settings.clusterName=${CLUSTER_NAME}" \
+    --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/KarpenterControllerRole-${CLUSTER_NAME}" \
+    --set controller.resources.requests.cpu=1 \
+    --set controller.resources.requests.memory=1Gi \
+    --set controller.resources.limits.cpu=1 \
+    --set controller.resources.limits.memory=1Gi > karpenter.yaml
+```
+3. Set node affinity
+1. Edit the karpenter.yaml file and find the karpenter deployment affinity rules. Modify the affinity so karpenter will run on one of the existing node group nodes.
+The rules should look something like this. Modify the value to match your $NODEGROUP, one node group per line.
+
+```
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: karpenter.sh/nodepool
+          operator: DoesNotExist
+      - matchExpressions:
+        - key: eks.amazonaws.com/nodegroup
+          operator: In
+          values:
+          - ${NODEGROUP}                                 #add your nodegroup
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - topologyKey: "kubernetes.io/hostname"
+```
+2.  deploy the rest of the karpenter resources
+
+```
+kubectl create namespace "${KARPENTER_NAMESPACE}" || true
+kubectl create -f \
+    "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodepools.yaml"
+kubectl create -f \
+    "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml"
+kubectl create -f \
+    "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${KARPENTER_VERSION}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
+kubectl apply -f karpenter.yaml
+```
+### Create default NodePool 
+
+We need to create a default NodePool so Karpenter knows what types of nodes we want for unscheduled workloads
+
+1. create a nodepool.yml
+```
+# This example NodePool will provision general purpose instances
+---
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: general-purpose
+  annotations:
+    kubernetes.io/description: "General purpose NodePool for generic workloads"
+spec:
+  template:
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3a.large"]
+      nodeClassRef:
+        name: default
+---
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+  annotations:
+    kubernetes.io/description: "General purpose EC2NodeClass for running Amazon Linux 2 nodes"
+spec:
+  amiFamily: AL2 # Amazon Linux 2
+  role: "KarpenterNodeRole-limbik-ml-cluster" # replace with your cluster name
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "limbik-ml-cluster" # replace with your cluster name
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "limbik-ml-cluster" # replace with your cluster name
+```
+
+```
+kubectl apply -f nodepool.yml
+```
