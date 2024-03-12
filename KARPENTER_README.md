@@ -340,3 +340,53 @@ spec:
 ```
 kubectl apply -f nodepool.yml
 ```
+
+### Kubernetes deployment to test how quickly Karpenter can create EC2 instances and schedule new pods.
+
+1. create a deployment.yaml file to test karpenter
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 10  # You can adjust the number of replicas
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "256Mi"  # Memory request
+            cpu: "100m"  # CPU request, 100 millicpu (0.1 CPU)
+          limits:
+            memory: "512Mi"  # Memory limit
+            cpu: "200m"  # CPU limit, 200 millicpu (0.2 CPU)
+```
+create the deployment with 10 replicas.
+
+```
+kubectl apply -f deployment.yaml
+```
+3. verify that Karpenter is creating nodes for your workloads.
+
+```
+kubectl logs -f -n kube-system -c controller -l app.kubernetes.io/name=karpenter
+```
+let's get all the nodes available in the Kubernetes cluster.
+
+```
+kubectl get nodes
+```
