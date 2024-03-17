@@ -223,7 +223,7 @@ Value=limbik-ml-cluster  # replace with your cluster name
 
 We need to allow nodes that are using the node IAM role we just created to join the cluster. To do that we have to modify the aws-auth ConfigMap in the cluster.
 
-You will need to add a section to the mapRoles that looks something like this. Replace the ${AWS_PARTITION} variable with the account partition, ${AWS_ACCOUNT_ID} variable with your account ID, and ${CLUSTER_NAME} variable with the cluster name, but do not replace the {{EC2PrivateDNSName}}.
+You will need to add a section to the mapRoles that looks something like this. Replace the variable but do not replace the {{EC2PrivateDNSName}}.
 
 ```
 KUBE_EDITOR=nano kubectl edit configmap aws-auth -n kube-system
