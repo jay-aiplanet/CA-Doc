@@ -3,7 +3,7 @@
 ### 1. First Set the variable
 
 ```
-KARPENTER_NAMESPACE=kube-system
+KARPENTER_NAMESPACE=karpenter
 CLUSTER_NAME=limbik-ml-cluster  # replace with your cluster name
 
 AWS_PARTITION="aws" # if you are not using standard partitions, you may need to configure to aws-cn / aws-us-gov
@@ -212,7 +212,7 @@ add the tag in the each subnet attached with the nodegroups
 KEY=karpenter.sh/discovery
 Value=limbik-ml-cluster  # replace with your cluster name
 ```
-### only tags the security groups for the Launch template of nodegroups
+### only tags the security groups for the Launch template of nodegroup and the security group attached with nodegroup
 
 ```
 KEY=karpenter.sh/discovery
@@ -291,7 +291,7 @@ kubectl apply -f karpenter.yaml
 ```
 ### Create default NodePool 
 
-We need to create a default NodePool so Karpenter knows what types of nodes we want for unscheduled workloads
+We need to create a default NodePool so Karpenter knows what types of nodes we want for unscheduled workloads and make sure you add the lables correctly 
 
 1. create a nodepool.yml
 ```
@@ -318,9 +318,32 @@ spec:
           values: ["on-demand"]
         - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["t3a.large"]
+          values: ["c7a.8xlarge"]
+        - key: eks.amazonaws.com/nodegroup
+          operator: In
+          values: ["decipher-ml-c7a-8xlarge-v2"]
+        - key: alpha.eksctl.io/nodegroup-name
+          operator: In
+          values: ["decipher-ml-c7a-8xlarge-v2"]
+
       nodeClassRef:
         name: default
+---
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+  annotations:
+    kubernetes.io/description: "General purpose EC2NodeClass for running Amazon Linux 2 nodes"
+spec:
+  amiFamily: AL2 # Amazon Linux 2
+  role: "KarpenterNodeRole-limbik-k8s" # replace with your cluster name
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "limbik-k8s" # replace with your cluster name
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "limbik-k8s" # replace with your cluster name
 ---
 apiVersion: karpenter.k8s.aws/v1beta1
 kind: EC2NodeClass
@@ -355,7 +378,7 @@ metadata:
   labels:
     app: nginx
 spec:
-  replicas: 10  # You can adjust the number of replicas
+  replicas: 30  # You can adjust the number of replicas
   selector:
     matchLabels:
       app: nginx
@@ -371,11 +394,21 @@ spec:
         - containerPort: 80
         resources:
           requests:
-            memory: "256Mi"  # Memory request
-            cpu: "100m"  # CPU request, 100 millicpu (0.1 CPU)
+            memory: "2Gi"  # Memory request
+            cpu: "2000m"  # CPU request, 100 millicpu (0.1 CPU)
           limits:
-            memory: "512Mi"  # Memory limit
-            cpu: "200m"  # CPU limit, 200 millicpu (0.2 CPU)
+            memory: "3Gi"  # Memory limit
+            cpu: "2000m"  # CPU limit, 200 millicpu (0.2 CPU)
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/nodegroup
+                operator: In
+                values:
+                - decipher-ml-c7a-8xlarge-v2
 ```
 create the deployment with 10 replicas.
 
@@ -385,7 +418,7 @@ kubectl apply -f deployment.yaml
 verify that Karpenter is creating nodes for your workloads.
 
 ```
-kubectl logs -f -n kube-system -c controller -l app.kubernetes.io/name=karpenter
+kubectl logs -f -n karpenter -c controller -l app.kubernetes.io/name=karpenter
 ```
 let's get all the nodes available in the Kubernetes cluster.
 
