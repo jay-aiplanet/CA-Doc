@@ -1,6 +1,6 @@
 ## The patchesStrategicMerge and patches fields in a Kustomization file are both used to apply modifications to Kubernetes resources, but they work differently:
 
-1. patchesStrategicMerge
+1. patchesStrategicMerge.
 
 kustomization.yaml
 ```
