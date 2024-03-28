@@ -18,9 +18,13 @@ metadata:
   name: your-app
 spec:
   template:
+    metadata:
+      labels:
+        alpha.eksctl.io/nodegroup-name: decipher-ml-c7a-8xlarge-v2
     spec:
       nodeSelector:
-        environment: production
+        environment: staging
+
 ```
 - In the strategic merge patch format, you provide a YAML snippet containing the fields you want to add, remove, or modify in the original resource.
 - This patch format is more expressive and allows for finer-grained control over the modifications.
