@@ -315,7 +315,7 @@ spec:
           values: ["linux"]
         - key: karpenter.sh/capacity-type
           operator: In
-          values: ["on-demand"]
+          values: ["on-demand", "spot"]  # Include both on-demand and spot capacity types
         - key: node.kubernetes.io/instance-type
           operator: In
           values: ["c7a.8xlarge"]
