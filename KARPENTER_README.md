@@ -344,22 +344,6 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         karpenter.sh/discovery: "limbik-k8s" # replace with your cluster name
----
-apiVersion: karpenter.k8s.aws/v1beta1
-kind: EC2NodeClass
-metadata:
-  name: default
-  annotations:
-    kubernetes.io/description: "General purpose EC2NodeClass for running Amazon Linux 2 nodes"
-spec:
-  amiFamily: AL2 # Amazon Linux 2
-  role: "KarpenterNodeRole-limbik-ml-cluster" # replace with your cluster name
-  subnetSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: "limbik-ml-cluster" # replace with your cluster name
-  securityGroupSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: "limbik-ml-cluster" # replace with your cluster name
 ```
 
 ```
